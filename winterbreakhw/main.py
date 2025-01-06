@@ -5,10 +5,25 @@ def calc_angle(x1, y1, x2, y2):
     angle = np.degrees(np.arctan2(y2-y1, x2-x1))
     return angle
 
-def calc_midpoint(point1, point2):
-    x1, y1 = point1[0], point1[1]
-    x2, y2 = point2[0], point2[1]
+def calc_midpoint(p1, p2):
+    x1, y1 = p1[0], p1[1]
+    x2, y2 = p2[0], p2[1]
     return (int((x1 + x2) / 2), int((y1 + y2) / 2))
+
+# def calc_intersection(p1, p2, p3, p4):
+#     x1, y1 = p1
+#     x2, y2 = p2
+#     x3, y3 = p3
+#     x4, y4 = p4
+
+#     denom = (x1-x2) * (y3-y4) - (y1-y2) * (x3-x4)
+#     if denom == 0:
+#         return None
+    
+#     px = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / denom
+#     py = ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / denom
+
+#     return int(px), int(py)
 
 def apply_overlay(frame):
     img = frame.copy() 
@@ -89,12 +104,24 @@ def apply_overlay(frame):
         red2green = np.linalg.norm(np.array(red) - np.array(green))
         red2blue = np.linalg.norm(np.array(red)-np.array(blue))
         shorter1 = green if red2green < red2blue else blue 
+        longer1 = blue if shorter1 == green else green
         midpoint1 = calc_midpoint(red, shorter1)
 
         yellow2green = np.linalg.norm(np.array(yellow) - np.array(green))
         yellow2blue = np.linalg.norm(np.array(yellow) - np.array(blue))
         shorter2 = green if yellow2green < yellow2blue else blue 
+        longer2 = blue if shorter2 == green else blue
         midpoint2 = calc_midpoint(yellow, shorter2)
+
+        # ix, iy = calc_intersection(red, longer1, yellow, longer2)
+        # if ix and iy:
+        #     points = np.array([midpoint1, midpoint2, (ix, iy)])
+        #     slope, intercept = np.polyfit(points[:, 0], points[:, 1], 1)
+        #     x1 = int(min(points[:, 0]))
+        #     x2 = int(max(points[:, 0]))
+        #     y1 = int(slope*x1 + intercept)
+        #     y2 = int(slope*x2 + intercept)
+        #     cv2.line(cropped, (x1, y1), (x2, y2), (0, 0, 0), 2)
 
         cv2.line(cropped, midpoint1, midpoint2, (255, 0, 255), 2)
     
