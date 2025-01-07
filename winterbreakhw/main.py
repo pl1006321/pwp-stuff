@@ -27,7 +27,9 @@ def calc_midpoint(p1, p2):
 
 def apply_overlay(frame):
     img = frame.copy() 
-    cropped = img[220:920, 500:1450]
+    height, width, _ = img.shape
+    
+    cropped = img[100:height-100, 100:width-100]
     # (500, 220), (1450, 920)
 
     gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
@@ -70,8 +72,8 @@ def apply_overlay(frame):
         degree = np.degrees(np.arctan2(y2-y1, x2-x1))
         length = np.linalg.norm(np.array(red) - np.array(yellow))
 
-        if length <= 650 and not (60 < abs(degree) < 125):
-            yellow = (int(x1+650), int((slope*(x1+650))+intercept))    
+        # if length <= 650 and not (60 < abs(degree) < 125):
+        #     yellow = (int(x1+650), int((slope*(x1+650))+intercept))    
 
         cv2.line(cropped, red, yellow, (0, 255, 0), 2)
         cv2.circle(cropped, red, 10, (0, 0, 255), -1)
@@ -91,8 +93,8 @@ def apply_overlay(frame):
         degree = np.degrees(np.arctan2(y2-y1, x2-x1))
         length = np.linalg.norm(np.array(green) - np.array(blue))
 
-        if length <= 650 and not (60 < abs(degree) < 125):
-            blue = (int(x1+650), int((slope*(x1+650))+intercept))
+        # if length <= 650 and not (60 < abs(degree) < 125):
+        #     blue = (int(x1+650), int((slope*(x1+650))+intercept))
 
         cv2.line(cropped, green, blue, (0, 255, 0), 2)
         cv2.circle(cropped, green, 10, (0, 255, 0), -1)
@@ -125,8 +127,8 @@ def apply_overlay(frame):
 
         cv2.line(cropped, midpoint1, midpoint2, (255, 0, 255), 2)
     
-    img[220:920, 500:1450] = cropped
-    cv2.rectangle(img, (500, 220), (1450, 920), (255, 0, 0), 2)
+    img[100:height-100, 100:width-100] = cropped
+    cv2.rectangle(img, (100, 100), (width-100, height-100), (255, 0, 0), 2)
 
     cv2.imshow('edges', edges)
     cv2.imshow('closed', closed)
