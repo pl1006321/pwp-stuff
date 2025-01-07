@@ -148,7 +148,7 @@ def apply_overlay(frame):
 camera = cv2.VideoCapture(0)
 
 if not camera.isOpened():
-    print("error: failed to grab camera")
+    print("failed to connect to camera")
     exit()
 
 while True:
