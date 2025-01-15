@@ -35,7 +35,7 @@ image = cv2.resize(image, (1280, 960))
 final = image.copy()
 
 # cv2.rectangle(image, (0, 375), (1280, 960), (255, 0, 0), 2)
-cropped = final[360:960, 0:1280]
+cropped = final[100:960, 0:1280]
 
 hsv = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
 
@@ -67,7 +67,7 @@ if lines is not None:
             continue
 
         print(angle)
-        cv2.line(cropped, (x1, y1), (x2, y2), (255, 0, 0), 1)
+        # cv2.line(cropped, (x1, y1), (x2, y2), (255, 0, 0), 1)
         if angle > 0:
             points1.append([x1, y1, x2, y2])
         else:
@@ -84,7 +84,7 @@ try:
     y1, y2 = (slope * x1 + intercept), (slope * x2 + intercept)
 
     p1, p2 = (int(x1), int(y1)), (int(x2), int(y2))
-    cv2.line(cropped, p1, p2, (0, 255, 0), 2)
+    cv2.line(cropped, p1, p2, (0, 255, 0), 3)
 except:
     print('error with line of best fits with points1')
 
@@ -94,7 +94,7 @@ try:
     y1, y2 = (slope * x1 + intercept), (slope * x2 + intercept)
 
     p3, p4 = (int(x1), int(y1)), (int(x2), int(y2))
-    cv2.line(cropped, p3, p4, (0, 255, 0), 2)
+    cv2.line(cropped, p3, p4, (0, 255, 0), 3)
 except:
     print('error with line of best fit with points2')
 
@@ -126,10 +126,10 @@ if p1 and p2 and p3 and p4:
 
     # c1, c2 = (int(x1), int(y1)), (int(x2), int(y2))
     # cv2.line(cropped, c1, c2, (255, 0, 255), 2)
-    cv2.line(cropped, center1, center2, (255, 0, 255), 2)
+    cv2.line(cropped, center1, center2, (255, 0, 255), 3)
 
 
-final[360:960, 0:1280] = cropped
+final[100:960, 0:1280] = cropped
 
 cv2.imshow('image', image)
 cv2.imshow('masked', masked)
