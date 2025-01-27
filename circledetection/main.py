@@ -1,3 +1,5 @@
+# this is for still image of can / circular shapes 
+
 import cv2
 import numpy as np
 
