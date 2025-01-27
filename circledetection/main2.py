@@ -1,3 +1,5 @@
+# this is for video of can rolling
+
 import cv2
 import numpy as np
 
@@ -6,6 +8,7 @@ def detect_circle(frame):
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
+    # experimented with different types of blurring; found gaussian to be the most effective
     blurred = cv2.medianBlur(gray, 21)
     gaussian = cv2.GaussianBlur(gray, (23, 23), 0)
     bilateral = cv2.bilateralFilter(gray, 15, 200, 200)
@@ -15,59 +18,46 @@ def detect_circle(frame):
     # kernel = np.ones((5, 5), np.uint8)
     # dilated = cv2.dilate(edges, kernel, iterations=1)
 
-    circles = cv2.HoughCircles(gaussian, cv2.HOUGH_GRADIENT, 1, 250, param1=50, param2=120)
+    circles = cv2.HoughCircles(gaussian, cv2.HOUGH_GRADIENT, 1, 200, param1=50, param2=50)
 
-    count = 0
     if circles is not None:
         circles = np.round(circles[0, :]).astype("int")
         for (h, k, r) in circles:
-            print(r)
+            # draw the circles
             cv2.circle(img, (h, k), r, (255, 0, 255), 5)
             cv2.circle(img, (h, k), 1, (0, 0, 255), -1)
-            count += 1
 
-    if 
-        r = None
-    return img, r
+    return img
 
 
-cap = cv2.VideoCapture('video6.mov')
+cam = cv2.VideoCapture('video10.mov')
 
-# Check if camera opened successfully
-if (cap.isOpened() == False):
-    print("Error opening video file")
+while cam.isOpened():
+    # read each frame
+    ret, frame = cam.read()
 
-# Read until video is completed
-while (cap.isOpened()):
+    if ret:
+        # resize the image while maintaining the aspect ratio
+        height, width, _ = frame.shape
+        frame = cv2.resize(frame, (600, int(height * 600 / width)))
 
-    # Capture frame-by-frame
-    ret, frame = cap.read()
-    height, width, _ = frame.shape
-    frame = cv2.resize(frame, (600, int(height * 600 / width)))
+        # apply overlay function onto the frame
+        overlay = detect_circle(frame)
 
-    avg = 0
-    frames = 0
-    overlay, r = detect_circle(frame)
-
-    if r is not None:
-        avg += r
-    frames += 1
-    if ret == True:
-        # Display the resulting frame
+        # show the original video
         cv2.imshow('og', frame)
+        # show video with overlay
         cv2.imshow('overlay', overlay)
-        # Press Q on keyboard to exit
+
+        # press q to exit
         if cv2.waitKey(25) & 0xFF == ord('q'):
             break
 
-    # Break the loop
+    # break the loop once no more frames are left (video has ended)
     else:
         break
 
-# When everything done, release
-# the video capture object
-cap.release()
+cam.release()
 
-# Closes all the frames
+# close all windows once video has ended 
 cv2.destroyAllWindows()
-print(f'average: {avg/frames}')
