@@ -35,20 +35,20 @@ def apply_overlay(frame):
     cropped = img[50:height - 50, 100:width - 100]  # makes a cropped roi
 
     gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)  # make grayscale
-    blurred = cv2.GaussianBlur(gray, (9, 9), 0)  # apply gaussian blur
+    blurred = cv2.GaussianBlur(gray, (15, 15), 0)  # apply gaussian blur
     edges = cv2.Canny(blurred, 50, 100, apertureSize=3)  # detect edges
 
     # use morphological closing to close in gaps 
-    kernel = np.ones((21, 21), np.uint8)
+    kernel = np.ones((29, 29), np.uint8)
+    kernel2 = np.ones((3, 3), np.uint8)
     closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
-    copy = closed.copy()
 
     # lines = cv2.HoughLinesP(closed, rho=1, theta=np.pi/180, threshold=50, minLineLength=30)
     # if lines is not None:
     #     x1, y1, x2, y2 = lines[0][0]
     #     cv2.line(cropped, (x1, y1), (x2, y2), (255, 0, 0), 3)
 
-    contours, _ = cv2.findContours(copy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours_list = list(contours)
     contours_list.sort(key=cv2.contourArea)
 
@@ -58,13 +58,17 @@ def apply_overlay(frame):
         con1 = contours_list[-1]
         con2 = contours_list[-2]
 
-        line1 = cv2.approxPolyDP(con1, 8, True)
-        line1 = line1[:int(len(line1)/1.3)]
-        cv2.drawContours(cropped, [line1], -1, (255, 0, 0), 3)
+        line1 = cv2.approxPolyDP(con1, 6, True)
+        print(f'line1: {line1}')
+        line1 = line1[:int(len(line1)/2)]
+        # cv2.drawContours(cropped, [line1], -1, (255, 0, 0), 3, lineType=cv2.LINE_AA)
+        cv2.polylines(cropped, [line1], False, (255, 0, 0), 3, lineType=cv2.LINE_AA)
 
-        line2 = cv2.approxPolyDP(con2, 8, True)
-        line2 = line2[:int(len(line1)/1.3)]
-        cv2.drawContours(cropped, [line2], -1, (255, 0, 0), 3)
+        line2 = cv2.approxPolyDP(con2, 6, True)
+        line2 = line2[:int(len(line2)/2)]
+        print(f'line2: {line2}')
+        # cv2.drawContours(cropped, [line2], -1, (255, 0, 0), 3, lineType=cv2.LINE_AA)
+        cv2.polylines(cropped, [line2], False, (255, 0, 0), 3, lineType=cv2.LINE_AA)
 
         for coords1, coords2 in zip(line1, line2):
             x1, y1 = coords1[0]
@@ -74,24 +78,32 @@ def apply_overlay(frame):
             midy = int((y1 + y2) / 2)
             middle_pts.append([midx, midy])
 
+        x1, y1 = line1[-1][0]
+        x2, y2 = line2[-1][0]
+
+        mid_x = int((x1+x2) / 2)
+        mid_y = int((y1+y2) / 2)
+        middle_pts.append([mid_x, mid_y])
+
             # middle_pts = [[x1, y1], [x2, y2]...]
 
     middle_pts = np.array(middle_pts, dtype=np.int32)
 
+
     if len(middle_pts) > 0:
-        cv2.polylines(cropped, [middle_pts], False, (255, 0, 255), 4)
+        cv2.polylines(cropped, [middle_pts], False, (255, 0, 255), 4, lineType=cv2.LINE_AA)
 
     img[50:height - 50, 100:width - 100] = cropped
     cv2.rectangle(img, (100, 50), (width - 100, height - 50), (255, 0, 0), 2)
 
+    cv2.imshow('blurred', blurred)
     cv2.imshow('canny', edges)
     cv2.imshow('closed', closed)
-    cv2.imshow('contours', copy)
 
     return img
 
 
-camera = cv2.VideoCapture(0)
+camera = cv2.VideoCapture(1)
 
 if not camera.isOpened():
     print("failed to connect to camera")
