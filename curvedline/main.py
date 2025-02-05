@@ -32,14 +32,14 @@ def apply_overlay(frame):
     img = frame.copy()
     height, width, _ = img.shape
 
-    cropped = img[50:height - 50, 100:width - 100]  # makes a cropped roi
+    cropped = img[100:height - 100, 200:width - 200]  # makes a cropped roi
 
     gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)  # make grayscale
-    blurred = cv2.GaussianBlur(gray, (15, 15), 0)  # apply gaussian blur
-    edges = cv2.Canny(blurred, 50, 100, apertureSize=3)  # detect edges
+    blurred = cv2.GaussianBlur(gray, (21, 21), 0)  # apply gaussian blur
+    edges = cv2.Canny(blurred, 30, 80, apertureSize=3)  # detect edges
 
-    # use morphological closing to close in gaps 
-    kernel = np.ones((29, 29), np.uint8)
+    # use morphological closing to close in gaps
+    kernel = np.ones((41, 41), np.uint8)
     kernel2 = np.ones((3, 3), np.uint8)
     closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
 
@@ -60,12 +60,12 @@ def apply_overlay(frame):
 
         line1 = cv2.approxPolyDP(con1, 6, True)
         print(f'line1: {line1}')
-        line1 = line1[:int(len(line1)/2)]
+        line1 = line1[:int(len(line1)/1.75)]
         # cv2.drawContours(cropped, [line1], -1, (255, 0, 0), 3, lineType=cv2.LINE_AA)
         cv2.polylines(cropped, [line1], False, (255, 0, 0), 3, lineType=cv2.LINE_AA)
 
         line2 = cv2.approxPolyDP(con2, 6, True)
-        line2 = line2[:int(len(line2)/2)]
+        line2 = line2[:int(len(line2)/1.8)]
         print(f'line2: {line2}')
         # cv2.drawContours(cropped, [line2], -1, (255, 0, 0), 3, lineType=cv2.LINE_AA)
         cv2.polylines(cropped, [line2], False, (255, 0, 0), 3, lineType=cv2.LINE_AA)
@@ -85,16 +85,15 @@ def apply_overlay(frame):
         mid_y = int((y1+y2) / 2)
         middle_pts.append([mid_x, mid_y])
 
-            # middle_pts = [[x1, y1], [x2, y2]...]
+        # middle_pts = [[x1, y1], [x2, y2]...]
 
-    middle_pts = np.array(middle_pts, dtype=np.int32)
-
+        middle_pts = np.array(middle_pts, dtype=np.int32)
 
     if len(middle_pts) > 0:
         cv2.polylines(cropped, [middle_pts], False, (255, 0, 255), 4, lineType=cv2.LINE_AA)
 
-    img[50:height - 50, 100:width - 100] = cropped
-    cv2.rectangle(img, (100, 50), (width - 100, height - 50), (255, 0, 0), 2)
+    img[100:height - 100, 200:width - 200] = cropped
+    cv2.rectangle(img, (200, 100), (width - 200, height - 100), (255, 0, 0), 2)
 
     cv2.imshow('blurred', blurred)
     cv2.imshow('canny', edges)
@@ -102,8 +101,7 @@ def apply_overlay(frame):
 
     return img
 
-
-camera = cv2.VideoCapture(1)
+camera = cv2.VideoCapture(0)
 
 if not camera.isOpened():
     print("failed to connect to camera")
