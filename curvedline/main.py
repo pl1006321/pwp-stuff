@@ -15,7 +15,10 @@ def process_img(frame):
 
     return closed # returns final processed img to be used for contour detection 
 
-
+# takes each frame of a live video stream, then
+# uses basic filtering and processing to clean
+# image. then, uses advanced contour detection algs
+# and other math algs to detect a curved centerline
 def apply_overlay(frame):
     img = frame.copy()
     height, width, _ = img.shape
@@ -26,11 +29,12 @@ def apply_overlay(frame):
 
     # find the contours of the image 
     contours, _ = cv2.findContours(processed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) 
-    contours_list = list(contours) # make contours into a list 
+    contours_list = list(contours)
     contours_list.sort(key=cv2.contourArea) # sort contours by area 
 
     middle_pts = []
 
+    # makes sure at least two contours r found
     if len(contours_list) >= 2:
         # two largest contours will always be the two lines 
         con1 = contours_list[-1]
@@ -61,15 +65,13 @@ def apply_overlay(frame):
 
         # manually add the last point of the centerline to ensure its 
         # length corresponds with the longer line's length 
-        if len(line1) > 1 and len(line2) > 1:
+        if len(line1) > 1 and len(line2) > 1: # in case lists are empty 
             x1, y1 = line1[-1][0]
             x2, y2 = line2[-1][0]
 
             mid_x = int((x1+x2) / 2)
             mid_y = int((y1+y2) / 2)
             middle_pts.append([mid_x, mid_y])
-
-        # middle_pts = [[x1, y1], [x2, y2]...]
 
         middle_pts = np.array(middle_pts, dtype=np.int32)
 
@@ -84,27 +86,31 @@ def apply_overlay(frame):
 
     return img # return fully processed image with centerline overlay 
 
-camera = cv2.VideoCapture(0)
+camera = cv2.VideoCapture(0) # initializes camera for capturing vid stream 
 
-if not camera.isOpened():
-    print("failed to connect to camera")
+if not camera.isOpened(): # check if opened correctly 
+    print("failed to connect to camera") # error handling and debugging 
     exit()
 
+# loop to continously read and display each frame of the video stream 
 while True:
-    ret, frame = camera.read()
+    ret, frame = camera.read() # read a frame from camera 
 
     if not ret:
-        print("failed to get frame")
+        print("failed to get frame") # if frame reading failed 
         break
 
     frame = cv2.flip(frame, 1)  # flip horizontally for better navigation
     overlay = apply_overlay(frame)  # apply the overlay onto the video stream
 
+    # shows video stream and overlay for reference 
     cv2.imshow('vid stream', frame)
     cv2.imshow('vid overlay', overlay)
 
+    # breaks loop once any key is pressed
     if cv2.waitKey(1) != -1:
         break
 
+# release camera and close all opencv windows
 camera.release()
 cv2.destroyAllWindows()
