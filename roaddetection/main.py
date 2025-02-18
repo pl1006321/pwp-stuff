@@ -3,14 +3,16 @@ import numpy as np
 
 def draw_lines(frame):
     copy = frame.copy()
-    cv2.line(copy, (300, 750), (800, 550), (255, 0, 255), 10)
-    cv2.line(copy, (800, 550), (1100, 550), (0, 0, 255), 10)
-    cv2.line(copy, (1100, 550), (1600, 750), (0, 255, 0), 10)
-    cv2.line(copy, (1600, 750), (300, 750), (255, 0, 0), 10)
+    height, width, _ = copy.shape
+    cv2.line(copy, (0, height-100), (0, int(height*3/5)), (255, 0, 255), 10)
+    cv2.line(copy, (0, int(height*3/5)), (width, int(height*3/5)), (0, 0, 255), 10)
+    cv2.line(copy, (width, int(height*3/5)), (width, height-100), (0, 255, 0), 10)
+    cv2.line(copy, (width, height-100), (0, height-100), (255, 0, 0), 10)
     return copy
 
 def draw_points(frame):
     copy = frame.copy()
+    height, width, _ = copy.shape
     cv2.circle(copy, (300, 750), 10, (255, 0, 0), -1)
     cv2.circle(copy, (800, 550), 10, (0, 255, 0), -1)
     cv2.circle(copy, (1100, 550), 10, (0, 0, 255), -1)
@@ -28,7 +30,7 @@ def pers_trans(frame):
 
     return warped
 
-camera = cv2.VideoCapture('video.mp4')
+camera = cv2.VideoCapture('video2.mov')
 
 if not camera.isOpened():
     print('failed to connect')
@@ -52,8 +54,9 @@ while True:
         break
 
 """
-top left: (800, 550)
-top right: (1100, 550)
-bottom right: (1600, 750)
-bottom left: (300, 750)
+idea: use cv2 approx poly dp so get an approximate outline (works for both curved and uncurved lines)
+using those points, make an roi 
+then after getting an roi you can perspective transform and use contour detection again
+so use cv2 approx poly dp again except with more specificity if ykwim 
+then either use houghlines or contours from this point to detect lines then make a centerline and unwarp
 """
