@@ -36,6 +36,22 @@ def filters(frame):
     cv2.imshow('blurred', blurred)
     cv2.imshow('edged', edges)
 
+def overlay_arrow(frame, arrow):
+    height, width, _ = arrow.shape
+    height = int(height*0.2); width = int(width*0.2)
+    arrow = cv2.resize(arrow, (height, width))
+
+    arrow_bgr = arrow[:, :, :3]
+    arrow_alpha = arrow[:, :, 3]
+
+    roi = frame[10:10+height, 850:850+width]
+    mask = arrow_alpha.astype(float) / 255.0
+
+    for x in range(3):
+        roi[:, :, x] = (mask * arrow_bgr[:, :, x] + (1 - mask) * roi[:, :, x])
+
+    return frame
+
 camera = cv2.VideoCapture('video.mov')
 
 if not camera.isOpened():
@@ -49,13 +65,18 @@ while True:
         print('failed to get frame')
         break
 
-    mask = draw_lines(frame)
-    warped = pers_trans(frame)
-    filters(warped)
+    frame = cv2.resize(frame, (960, 540))
+    up_arrow = cv2.imread('uparrow.png', cv2.IMREAD_UNCHANGED)
 
-    # cv2.imshow("og video", frame)
+    final = overlay_arrow(frame.copy(), up_arrow)
+
+    # mask = draw_lines(frame)
+    # warped = pers_trans(frame)
+    # filters(warped)
+
+    cv2.imshow("og video", final)
     # cv2.imshow('mask', mask)
-    cv2.imshow('test', warped)
+    # cv2.imshow('test', warped)
 
     if cv2.waitKey(1) != -1:
         break
