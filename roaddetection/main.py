@@ -1,90 +1,105 @@
 import cv2
 import numpy as np
 
-# top left: (0, int(height*3/5))
-# top right: (width, int(height*3/5))
-# bottom right: (width, height)
-# bottom left: (0, height)
+"""
+overlay_arrow takes in the frame of each video (frame)
+and the arrow overlay, regardless of direction. then, 
+the function creates a smooth overlay of the transparent 
+arrow png over the video. it returns the original video
+frame with the arrow overlay applied
+"""
 
-def draw_lines(frame):
-    copy = frame.copy()
-    height, width, _ = copy.shape
-    cv2.line(copy, (0, height), (0, int(height*3/5)), (255, 0, 255), 10)
-    cv2.line(copy, (0, int(height*3/5)), (width, int(height*3/5)), (0, 0, 255), 10)
-    cv2.line(copy, (width, int(height*3/5)), (width, height), (0, 255, 0), 10)
-    cv2.line(copy, (width, height), (0, height), (255, 0, 0), 10)
-    return copy
+def detect_lines(frame, cropped):
+    contours, _ = cv2.findContours(frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours_list = list(contours)
+    contours_list.sort(key=cv2.contourArea)
 
-def pers_trans(frame):
-    copy = frame.copy()
-    height, width, _ = copy.shape
+    final = []
 
-    og_pts = np.float32([[0, int(height*3/5)], [width, int(height*3/5)], [width, height], [0, height]])
-    dst_pts = np.float32([[0, 0], [500, 0], [500, 500], [0, 500]])
+    if len(contours_list) >= 2:
+        con1 = contours_list[-1]
+        con2 = contours_list[-2]
+        final.append(con1)
+        final.append(con2)
 
-    matrix = cv2.getPerspectiveTransform(og_pts, dst_pts)
-    warped = cv2.warpPerspective(copy, matrix, (500, 500))
+    cv2.drawContours(cropped, final, -1, (255, 0, 0), 3)
 
-    return warped
+    return cropped
+
 
 def filters(frame):
-    # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(frame, (11, 11), 0)
-    edges = cv2.Canny(blurred, 30, 80, apertureSize=3)
+    height, width, _ = frame.shape
+    cropped = frame[350:height-2].copy()
 
-    # cv2.imshow('gray', gray)
+    gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+    edges = cv2.Canny(blurred, 150, 300)
+
+    processed = detect_lines(edges, cropped)
+
+    frame[350:height-2] = processed
+
     cv2.imshow('blurred', blurred)
-    cv2.imshow('edged', edges)
-
-def overlay_arrow(frame, arrow):
-    height, width, _ = arrow.shape
-    height = int(height*0.2); width = int(width*0.2)
-    arrow = cv2.resize(arrow, (height, width))
-
-    arrow_bgr = arrow[:, :, :3]
-    arrow_alpha = arrow[:, :, 3]
-
-    roi = frame[10:10+height, 850:850+width]
-    mask = arrow_alpha.astype(float) / 255.0
-
-    for x in range(3):
-        roi[:, :, x] = (mask * arrow_bgr[:, :, x] + (1 - mask) * roi[:, :, x])
+    cv2.imshow('edges', edges)
 
     return frame
 
-camera = cv2.VideoCapture('video.mov')
 
+def overlay_arrow(frame, arrow):
+    height, width, _ = arrow.shape  # takes shape of arrow png
+
+    # resize arrow to 20% of its original size
+    height = int(height * 0.2);
+    width = int(width * 0.2)
+    arrow = cv2.resize(arrow, (height, width))
+
+    arrow_bgr = arrow[:, :, :3]  # extract bgr channels of the arrow
+    arrow_alpha = arrow[:, :, 3]  # extract the alpha (transparency) channel
+
+    # create a designated region in the video for the arrow overlay
+    # the arrow will be overlayed in the top right corner (850, 10)
+    roi = frame[10:10 + height, 850:850 + width]
+
+    # alpha channel is normalized to range from 0.0 to 1.0
+    mask = arrow_alpha.astype(float) / 255.0
+
+    # iterates through each color channel of the roi, then blends
+    # it with the arrow image
+    for x in range(3):
+        roi[:, :, x] = (mask * arrow_bgr[:, :, x] + (1 - mask) * roi[:, :, x])
+        # multiplies arrow's color channel by the alpha value, then the roi's
+        # color channel by 1 - alpha value to correctly overlay the arrow
+
+    # return final video frame with arrow overlay
+    return frame
+
+
+camera = cv2.VideoCapture('video.mov')  # read fro the video file
+
+# checks to see if camera is reading from the file correctly
 if not camera.isOpened():
-    print('failed to connect')
+    print('failed to connect')  # debugging message
     exit()
 
 while True:
-    ret, frame = camera.read()
+    ret, frame = camera.read()  # read each frame of the video
 
     if not ret:
-        print('failed to get frame')
+        print('failed to get frame')  # debugging message
         break
 
-    frame = cv2.resize(frame, (960, 540))
+    frame = cv2.resize(frame, (960, 540))  # resizes frame to around half its size
+    # read arrow png, uses imread_unchanged to preserve alpha channels
     up_arrow = cv2.imread('uparrow.png', cv2.IMREAD_UNCHANGED)
 
-    final = overlay_arrow(frame.copy(), up_arrow)
+    filtered = filters(frame)
+    # overlay the arrow transparent png onto the video frame
+    # final = overlay_arrow(filtered.copy(), up_arrow)
 
-    # mask = draw_lines(frame)
-    # warped = pers_trans(frame)
-    # filters(warped)
+    # show each frame with the overlay attached
+    cv2.imshow('filter', filtered)
+    # cv2.imshow("og video", final)
 
-    cv2.imshow("og video", final)
-    # cv2.imshow('mask', mask)
-    # cv2.imshow('test', warped)
-
+    # exits video if any other key is pressed
     if cv2.waitKey(1) != -1:
         break
-
-"""
-idea: use cv2 approx poly dp so get an approximate outline (works for both curved and uncurved lines)
-using those points, make an roi 
-then after getting an roi you can perspective transform and use contour detection again
-so use cv2 approx poly dp again except with more specificity if ykwim 
-then either use houghlines or contours from this point to detect lines then make a centerline and unwarp
-"""
