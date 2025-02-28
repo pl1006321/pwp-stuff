@@ -4,17 +4,20 @@ import numpy as np
 def get_points(time):
     set1 = [[200, 525], [475, 375], [615, 375], [800, 525]]
     set2 = [[250, 525], [500, 375], [650, 375], [850, 525]]
-    set3 = [[200, 525], [425, 400], [590, 400], [790, 525]]
-    set4 = [[200, 525], [450, 390], [600, 390], [850, 525]]
+    set3 = [[250, 525], [490, 375], [600, 375], [850, 525]]
+    set4 = [[200, 525], [425, 400], [590, 400], [790, 525]]
+    set5 = [[200, 525], [450, 390], [600, 390], [850, 525]]
 
     if 0.03 <= time <= 1.80:
         return set1
-    elif 1.83 <= time <= 6.60:
+    elif 1.83 <= time <= 6.33:
         return set2
-    elif 6.63 <= time <= 9.33:
+    elif 6.33 <= time <= 8.26:
         return set3
-    elif 9.33 <= time <= 14.40:
+    elif 8.26 <= time <= 9.33:
         return set4
+    elif 9.33 <= time <= 14.40:
+        return set5
 
 def pers_trans(frame, points):
     src_pts = np.float32(points)
@@ -47,25 +50,31 @@ def filters(frame):
 
 def template_match(warped, template):
     final = warped.copy()
-    print(template.shape)
+    height, width, _ = template.shape
 
     result = cv2.matchTemplate(warped, template, cv2.TM_CCOEFF_NORMED)
-    threshold = 0.5
+    threshold = 0.45
 
     loc = np.where(result >= threshold)
     x_coords = []; y_coords = []
     for point in zip(*loc[::-1]):
         x1, y1 = point
+        cv2.rectangle(warped, (x1, y1), (x1+width, y1+height), (255, 0, 255), 1)
         x_coords.append(x1); y_coords.append(y1)
 
-    avg_x = int(sum(x_coords)/len(x_coords))
-    avg_y = int(sum(y_coords)/len(y_coords))
+    avg_x = np.average(x_coords) if len(x_coords) > 0 else None
+    avg_y = np.average(y_coords) if len(y_coords) > 0 else None
 
-    return avg_x, avg_y
+    if avg_x is None or avg_y is None:
+        return None, None
+    else:
+        return (avg_x, avg_y), (avg_x + width, avg_y + height)
 
 
-def detect_lines(frame, final):
+def detect_lines(frame, final, p1 = None, p2 = None):
     thinned = cv2.ximgproc.thinning(frame)
+    roi_x1, roi_y1 = p1 if p1 is not None else [None, None]
+    roi_x2, roi_y2 = p2 if p2 is not None else [None, None]
 
     dilated = cv2.dilate(thinned, np.ones((5, 5), np.uint8), iterations=1)
     
@@ -73,8 +82,12 @@ def detect_lines(frame, final):
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
-            cv2.line(final, (x1, y1), (x2, y2), (0, 255, 0), 6)
-    
+            if p1 is None and p2 is None:
+                cv2.line(final, (x1, y1), (x2, y2), (0, 255, 0), 6)
+            else:
+                if not (roi_x1 <= x1 <= roi_x2 and roi_x1 <= x2 <= roi_x2 and roi_y1 <= y1 <= roi_y2):
+                    cv2.line(final, (x1, y1), (x2, y2), (0, 255, 0), 6)
+                
     return final
 
 camera = cv2.VideoCapture('video.mov')
@@ -101,11 +114,10 @@ while True:
     points = get_points(time)
     original, warped = pers_trans(frame, points)
     filtered = filters(warped.copy())
-    matched_x, matched_y = template_match(warped, cv2.imread('rightturn_temp.png'))
-    lines = detect_lines(filtered, warped.copy())
+    temp_p1, temp_p2 = template_match(warped, cv2.imread('rightturn_temp.png'))
+    lines = detect_lines(filtered, warped.copy(), temp_p1, temp_p2)
 
     unwarped = unwarp(lines, points)
-    # cv2.rectangle(frame, (matched_x, matched_y,), )
     final = cv2.addWeighted(frame, 0.5, unwarped, 0.8, 0)
 
     cv2.imshow('frame', original)
