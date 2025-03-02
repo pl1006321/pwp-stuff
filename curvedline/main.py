@@ -15,9 +15,7 @@ def process_img(frame):
 
     # use skeletonization to make two clean thin lines
     thinned = cv2.ximgproc.thinning(closed)
-
-    cv2.imshow('thinned', thinned)
-
+    
     return thinned # returns final processed img to be used for contour detection 
 
 # takes each frame of a live video stream, then
