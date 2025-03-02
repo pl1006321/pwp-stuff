@@ -13,7 +13,12 @@ def process_img(frame):
     kernel = np.ones((41, 41), np.uint8)
     closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
 
-    return closed # returns final processed img to be used for contour detection 
+    # use skeletonization to make two clean thin lines
+    thinned = cv2.ximgproc.thinning(closed)
+
+    cv2.imshow('thinned', thinned)
+
+    return thinned # returns final processed img to be used for contour detection 
 
 # takes each frame of a live video stream, then
 # uses basic filtering and processing to clean
@@ -23,7 +28,7 @@ def apply_overlay(frame):
     img = frame.copy()
     height, width, _ = img.shape
 
-    cropped = img[100:height - 100, 200:width - 200]  # makes a cropped roi
+    cropped = img[200:height - 200, 400:width - 400]  # makes a cropped roi
 
     processed = process_img(cropped) # process the image 
 
@@ -44,7 +49,7 @@ def apply_overlay(frame):
         line1 = cv2.approxPolyDP(con1, 6, True)
         # divides by 2 so instead of detecting a full outline, it detects half 
         # of the outline -> a singular line representative of the path 
-        line1 = line1[:int(len(line1)/1.68)] 
+        line1 = line1[:int(len(line1)/1.65)] 
         # draw the polyline defined by the points which defines the longer path in blue 
         cv2.polylines(cropped, [line1], False, (255, 0, 0), 3, lineType=cv2.LINE_AA) 
 
@@ -80,13 +85,13 @@ def apply_overlay(frame):
         cv2.polylines(cropped, [middle_pts], False, (255, 0, 255), 4, lineType=cv2.LINE_AA)
 
     # pastes cropped image back into the original full image
-    img[100:height - 100, 200:width - 200] = cropped
+    img[200:height - 200, 400:width - 400] = cropped
     # draw a rectangle around the mask 
-    cv2.rectangle(img, (200, 100), (width - 200, height - 100), (255, 0, 0), 2)
+    cv2.rectangle(img, (400, 200), (width - 400, height - 200), (255, 0, 0), 2)
 
     return img # return fully processed image with centerline overlay 
 
-camera = cv2.VideoCapture(0) # initializes camera for capturing vid stream 
+camera = cv2.VideoCapture(1) # initializes camera for capturing vid stream 
 
 if not camera.isOpened(): # check if opened correctly 
     print("failed to connect to camera") # error handling and debugging 
