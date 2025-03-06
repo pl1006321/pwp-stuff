@@ -4,10 +4,10 @@ import numpy as np
 def get_points(time):
     set1 = [[200, 525], [475, 375], [615, 375], [800, 525]]
     set2 = [[250, 525], [500, 375], [650, 375], [850, 525]]
-    set3 = [[200, 525], [425, 400], [590, 400], [790, 525]]
+    set3 = [[225, 525], [425, 400], [590, 400], [790, 525]]
     set4 = [[200, 525], [450, 390], [600, 390], [850, 525]]
     set5 = [[200, 525], [450, 360], [600, 360], [850, 525]]
-    set6 = [[250, 525], [450, 400], [585, 400], [785, 525]]
+    set6 = [[235, 525], [450, 400], [585, 400], [785, 525]]
     set7 = [[250, 450], [500, 300], [650, 300], [750, 450]]
     set8 = [[200, 480], [400, 330], [500, 330], [750, 480]]
 
@@ -88,38 +88,72 @@ def template_match(warped, template):
         return None, None
     else:
         return (avg_x, avg_y), (avg_x + width, avg_y + height)
+    
+def polyfit_line(points):
+    try: 
+        slope, intercept = np.polyfit(points[:, 0], points[:, 1], 1)
+        if abs(slope) > 5:
+            x1, x2 = int(min(points[:, 0])), int(max(points[:, 0]))
+            y1, y2 = int((slope * x1 + intercept)), int((slope * x2 + intercept))
+        return [x1, y1, x2, y2]
+    except:
+        return None
 
 def detect_lines(frame, final, time, templates):
     thinned = cv2.ximgproc.thinning(frame)
 
     h, w, _ = final.shape
-    left_final = final[:, 0:int(w/4)]
+    left_final = final[:, 0:int(w/2)]
+    right_final = final[:, int(w/2):]
 
     dilated = cv2.dilate(thinned, np.ones((5, 5), np.uint8), iterations=1)
+
+    left = dilated[:, 0:int(w/2)]
+    right = dilated[:, int(w/2):]
 
     template_pts = []
     for template in templates:
         p1, p2 = template_match(warped, template)
         if p1 and p2:
             template_pts.append((p1, p2))
-    
-    lines = cv2.HoughLinesP(dilated, 1, np.pi/180, 10, minLineLength=60, maxLineGap=10)
-    if lines is not None:
+
+    left_pts = []
+    left_lines = cv2.HoughLinesP(left, 1, np.pi/180, 10, minLineLength=10)
+    if left_lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
             template_flag = False
 
             for p1, p2 in template_pts:
-                temp_x1, temp_y1, = p1
-                temp_x2, temp_y2 = p2
+                p_x1, p_y1 = p1
+                p_x2, p_y2 = p2
 
-                if (temp_x1 <= x1 <= temp_x2 and temp_y1 <= y1 <= temp_y2) or (temp_x1 <= x2 <= temp_x2 and temp_y1 <= y2 <= temp_y2):
+                if (p_x1 <= x1 <= p_x2 and p_y1 <= y1 <= p_y2) or (p_x1 <= x2 <= p_x2 and p_y1 <= y2 <= p_y2):
                     template_flag = True
                     break
+
+            slope = (y2-y1)/(x2-x1) if x2-x1 != 0 else 300
+            if (not template_flag) and abs(slope) > 50:
+                left_pts.append([x1, y1, x2, y2])
+
+    
+    # lines = cv2.HoughLinesP(dilated, 1, np.pi/180, 10, minLineLength=60, maxLineGap=10)
+    # if lines is not None:
+    #     for line in lines:
+    #         x1, y1, x2, y2 = line[0]
+    #         template_flag = False
+
+    #         for p1, p2 in template_pts:
+    #             temp_x1, temp_y1, = p1
+    #             temp_x2, temp_y2 = p2
+
+    #             if (temp_x1 <= x1 <= temp_x2 and temp_y1 <= y1 <= temp_y2) or (temp_x1 <= x2 <= temp_x2 and temp_y1 <= y2 <= temp_y2):
+    #                 template_flag = True
+    #                 break
             
-            slope = (y2-y1/x2-x1) if x2-x1 != 0 else 300
-            if (not template_flag) and (abs(slope) > 50):
-                cv2.line(final, (x1, y1), (x2, y2), (0, 255, 0), 6)
+    #         slope = (y2-y1/x2-x1) if x2-x1 != 0 else 300
+    #         if (not template_flag) and (abs(slope) > 50):
+    #             cv2.line(final, (x1, y1), (x2, y2), (0, 255, 0), 6)
 
     if (0.03 <= time <= 10.00) or (24.3 <= time <= 28.30):
         _, width = dilated.shape
