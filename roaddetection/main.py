@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 
+leftline = rightline = None
+
 def get_points(time):
     set1 = [[200, 525], [475, 375], [615, 375], [800, 525]]
     set2 = [[250, 525], [500, 375], [650, 375], [850, 525]]
@@ -12,7 +14,7 @@ def get_points(time):
     set8 = [[200, 480], [400, 330], [500, 330], [750, 480]]
 
     set9 = [[220, 525], [410, 370], [500, 370], [700, 525]]
-    set10 = [[220, 500], [410, 360], [550, 360], [790, 500]]
+    set10 = [[210, 500], [400, 360], [550, 360], [790, 500]]
 
     if 0.03 <= time <= 1.80:
         return set1
@@ -24,11 +26,11 @@ def get_points(time):
         return set4
     elif 14.40 <= time <= 15.40:
         return set5
-    elif 15.40 <= time <= 17.40:
+    elif 15.40 <= time <= 24.30:
         return set6
     elif 24.30 <= time <= 24.83:
         return set7
-    elif 24.83 <= time <= 28.30:
+    elif 24.83 <= time <= 32.60:
         return set8
     
     if 32.60 <= time <= 34.00:
@@ -92,24 +94,22 @@ def template_match(warped, template):
 def polyfit_line(points):
     try: 
         slope, intercept = np.polyfit(points[:, 0], points[:, 1], 1)
-        if abs(slope) > 5:
+        if abs(slope) >= 5:
             x1, x2 = int(min(points[:, 0])), int(max(points[:, 0]))
             y1, y2 = int((slope * x1 + intercept)), int((slope * x2 + intercept))
-        return [x1, y1, x2, y2]
-    except:
+            print('yay line!')
+            return [x1, y1, x2, y2]
+    except Exception as e:
+        print(f'error: {str(e)}')
         return None
 
 def detect_lines(frame, final, time, templates):
+    global leftline, rightline 
     thinned = cv2.ximgproc.thinning(frame)
 
     h, w, _ = final.shape
-    left_final = final[:, 0:int(w/2)]
-    right_final = final[:, int(w/2):]
 
     dilated = cv2.dilate(thinned, np.ones((5, 5), np.uint8), iterations=1)
-
-    left = dilated[:, 0:int(w/2)]
-    right = dilated[:, int(w/2):]
 
     template_pts = []
     for template in templates:
@@ -117,9 +117,10 @@ def detect_lines(frame, final, time, templates):
         if p1 and p2:
             template_pts.append((p1, p2))
 
-    left_pts = []
-    left_lines = cv2.HoughLinesP(left, 1, np.pi/180, 10, minLineLength=10)
-    if left_lines is not None:
+    left_pts = []; right_pts = []
+
+    lines = cv2.HoughLinesP(dilated, 1, np.pi/180, 10, minLineLength=10)
+    if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
             template_flag = False
@@ -133,51 +134,31 @@ def detect_lines(frame, final, time, templates):
                     break
 
             slope = (y2-y1)/(x2-x1) if x2-x1 != 0 else 300
-            if (not template_flag) and abs(slope) > 50:
-                left_pts.append([x1, y1, x2, y2])
-
+            if (not template_flag) and abs(slope) > 5:
+                if x1 < w/2 and x2 < w/2:
+                    left_pts.append([x1, y1, x2, y2])
+                elif x1 > w/2 and x2 > w/2:
+                    right_pts.append([x1, y1, x2, y2])
+                # cv2.line(final, (x1, y1), (x2, y2), (255, 0, 255), 6)
     
-    # lines = cv2.HoughLinesP(dilated, 1, np.pi/180, 10, minLineLength=60, maxLineGap=10)
-    # if lines is not None:
-    #     for line in lines:
-    #         x1, y1, x2, y2 = line[0]
-    #         template_flag = False
+    cv2.imshow('dilated', dilated)            
 
-    #         for p1, p2 in template_pts:
-    #             temp_x1, temp_y1, = p1
-    #             temp_x2, temp_y2 = p2
+    left_pts = np.array(left_pts); right_pts = np.array(right_pts)
 
-    #             if (temp_x1 <= x1 <= temp_x2 and temp_y1 <= y1 <= temp_y2) or (temp_x1 <= x2 <= temp_x2 and temp_y1 <= y2 <= temp_y2):
-    #                 template_flag = True
-    #                 break
-            
-    #         slope = (y2-y1/x2-x1) if x2-x1 != 0 else 300
-    #         if (not template_flag) and (abs(slope) > 50):
-    #             cv2.line(final, (x1, y1), (x2, y2), (0, 255, 0), 6)
+    res = polyfit_line(left_pts)
+    if res is not None:
+        leftline = res
 
-    if (0.03 <= time <= 10.00) or (24.3 <= time <= 28.30):
-        _, width = dilated.shape
-        left = dilated[:, 0:int(width/5)]
-        points = []
+    res = polyfit_line(right_pts)
+    if res is not None:
+        rightline = res 
 
-        lines = cv2.HoughLinesP(left, 1, np.pi/180, 10)
-        if lines is not None:
-            for line in lines:
-                x1, y1, x2, y2 = line[0]
-                points.append([x1, y1, x2, y2])
+    if leftline is not None:
+        cv2.line(final, (leftline[0], leftline[1]), (leftline[2], leftline[3]), (0, 255, 0), 12)
+    
+    if rightline is not None:
+        cv2.line(final, (rightline[0], rightline[1]), (rightline[2], rightline[3]), (0, 255, 0), 12)
 
-        points = np.array(points)
-
-        try:
-            slope, intercept = np.polyfit(points[:, 0], points[:, 1], 1)
-            if abs(slope) > 5:
-                x1, x2 = int(min(points[:, 0])), int(max(points[:, 0]))
-                y1, y2 = int((slope * x1 + intercept)), int((slope * x2 + intercept))
-                cv2.line(left_final, (x1, y1), (x2, y2), (0, 255, 0), 12)
-        except:
-            pass
-
-        cv2.imshow('left', left_final)
     return final
 
 def overlay_arrow(frame, arrow):
