@@ -102,6 +102,9 @@ def polyfit_line(points):
     except Exception as e:
         print(f'error: {str(e)}')
         return None
+    
+def get_length(x1, y1, x2, y2):
+    return np.sqrt((x2-x1)**2 + (y2-y1)**2)
 
 def detect_lines(frame, final, time, templates):
     global leftline, rightline 
@@ -119,7 +122,7 @@ def detect_lines(frame, final, time, templates):
 
     left_pts = []; right_pts = []
 
-    lines = cv2.HoughLinesP(dilated, 1, np.pi/180, 10, minLineLength=10)
+    lines = cv2.HoughLinesP(dilated, 1, np.pi/180, 10)
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
@@ -137,7 +140,7 @@ def detect_lines(frame, final, time, templates):
             if (not template_flag) and abs(slope) > 5:
                 if x1 < w/2 and x2 < w/2:
                     left_pts.append([x1, y1, x2, y2])
-                elif x1 > w/2 and x2 > w/2:
+                elif x1 > w/2 and x2 > w/2 and get_length(x1, y1, x2, y2) > 40:
                     right_pts.append([x1, y1, x2, y2])
                 # cv2.line(final, (x1, y1), (x2, y2), (255, 0, 255), 6)
     
