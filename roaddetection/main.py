@@ -3,6 +3,7 @@ import numpy as np
 
 leftline = rightline = None
 
+
 def get_points(time):
     set1 = [[200, 525], [475, 375], [615, 375], [800, 525]]
     set2 = [[250, 525], [500, 375], [650, 375], [850, 525]]
@@ -32,13 +33,14 @@ def get_points(time):
         return set7
     elif 24.83 <= time <= 32.60:
         return set8
-    
+
     if 32.60 <= time <= 34.00:
         return set9
     elif 34 <= time <= 39:
         return set10
-    
+
     return None
+
 
 def pers_trans(frame, points):
     src_pts = np.float32(points)
@@ -52,6 +54,7 @@ def pers_trans(frame, points):
 
     return warped
 
+
 def unwarp(warped, points):
     src_pts = np.float32([[0, 500], [0, 0], [500, 0], [500, 500]])
     dst_pts = np.float32(points)
@@ -61,6 +64,7 @@ def unwarp(warped, points):
 
     return unwarped
 
+
 def filters(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (9, 9), 0)
@@ -68,6 +72,7 @@ def filters(frame):
     masked = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 71, -30)
 
     return masked
+
 
 def template_match(warped, template):
     final = warped.copy()
@@ -77,11 +82,13 @@ def template_match(warped, template):
     threshold = 0.45
 
     loc = np.where(result >= threshold)
-    x_coords = []; y_coords = []
+    x_coords = [];
+    y_coords = []
     for point in zip(*loc[::-1]):
         x1, y1 = point
         # cv2.rectangle(warped, (x1, y1), (x1+width, y1+height), (255, 0, 255), 1)
-        x_coords.append(x1); y_coords.append(y1)
+        x_coords.append(x1);
+        y_coords.append(y1)
 
     avg_x = np.average(x_coords) if len(x_coords) > 0 else None
     avg_y = np.average(y_coords) if len(y_coords) > 0 else None
@@ -90,9 +97,10 @@ def template_match(warped, template):
         return None, None
     else:
         return (avg_x, avg_y), (avg_x + width, avg_y + height)
-    
+
+
 def polyfit_line(points):
-    try: 
+    try:
         slope, intercept = np.polyfit(points[:, 0], points[:, 1], 1)
         if abs(slope) >= 5:
             x1, x2 = int(min(points[:, 0])), int(max(points[:, 0]))
@@ -102,12 +110,14 @@ def polyfit_line(points):
     except Exception as e:
         print(f'error: {str(e)}')
         return None
-    
+
+
 def get_length(x1, y1, x2, y2):
-    return np.sqrt((x2-x1)**2 + (y2-y1)**2)
+    return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
 
 def detect_lines(frame, final, time, templates):
-    global leftline, rightline 
+    global leftline, rightline
     thinned = cv2.ximgproc.thinning(frame)
 
     h, w, _ = final.shape
@@ -122,7 +132,7 @@ def detect_lines(frame, final, time, templates):
 
     left_pts = []; right_pts = []
 
-    lines = cv2.HoughLinesP(dilated, 1, np.pi/180, 10)
+    lines = cv2.HoughLinesP(dilated, 1, np.pi / 180, 10)
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
@@ -136,17 +146,18 @@ def detect_lines(frame, final, time, templates):
                     template_flag = True
                     break
 
-            slope = (y2-y1)/(x2-x1) if x2-x1 != 0 else 300
+            slope = (y2 - y1) / (x2 - x1) if x2 - x1 != 0 else 300
             if (not template_flag) and abs(slope) > 5:
-                if x1 < w/2 and x2 < w/2:
+                if x1 < w / 2 and x2 < w / 2:
                     left_pts.append([x1, y1, x2, y2])
-                elif x1 > w/2 and x2 > w/2 and get_length(x1, y1, x2, y2) > 40:
+                elif x1 > w / 2 and x2 > w / 2 and get_length(x1, y1, x2, y2) > 40:
                     right_pts.append([x1, y1, x2, y2])
                 # cv2.line(final, (x1, y1), (x2, y2), (255, 0, 255), 6)
-    
-    cv2.imshow('dilated', dilated)            
 
-    left_pts = np.array(left_pts); right_pts = np.array(right_pts)
+    cv2.imshow('dilated', dilated)
+
+    left_pts = np.array(left_pts);
+    right_pts = np.array(right_pts)
 
     res = polyfit_line(left_pts)
     if res is not None:
@@ -154,15 +165,17 @@ def detect_lines(frame, final, time, templates):
 
     res = polyfit_line(right_pts)
     if res is not None:
-        rightline = res 
+        rightline = res
 
     if leftline is not None:
+        print('length: ', get_length(leftline[0], leftline[1], leftline[2], leftline[3]))
         cv2.line(final, (leftline[0], leftline[1]), (leftline[2], leftline[3]), (0, 255, 0), 12)
-    
+
     if rightline is not None:
         cv2.line(final, (rightline[0], rightline[1]), (rightline[2], rightline[3]), (0, 255, 0), 12)
 
     return final
+
 
 def overlay_arrow(frame, arrow):
     height, width, _ = arrow.shape  # takes shape of arrow png
