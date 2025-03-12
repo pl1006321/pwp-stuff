@@ -115,6 +115,8 @@ def polyfit_line(points):
 def get_length(x1, y1, x2, y2):
     return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
+def get_midpt(x1, y1, x2, y2):
+    return (int((x1+x2)/2), int((y1+y2)/2))
 
 def detect_lines(frame, final, time, templates):
     global leftline, rightline
@@ -132,7 +134,7 @@ def detect_lines(frame, final, time, templates):
 
     left_pts = []; right_pts = []
 
-    lines = cv2.HoughLinesP(dilated, 1, np.pi / 180, 10)
+    lines = cv2.HoughLinesP(dilated, 1, np.pi / 180, 10,)
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
@@ -173,6 +175,16 @@ def detect_lines(frame, final, time, templates):
 
     if rightline is not None:
         cv2.line(final, (rightline[0], rightline[1]), (rightline[2], rightline[3]), (0, 255, 0), 12)
+
+    if leftline is not None and rightline is not None:
+        l_x1, l_y1, l_x2, l_y2 = leftline
+        r_x1, r_y1, r_x2, r_y2 = rightline
+        mid_x1 = int((l_x1 + r_x1)/2) if get_length(l_x1, l_y1, r_x1, r_y1) < get_length(l_x1, l_y1, r_x2, r_y2) else int((l_x1 + r_x2)/2)
+        mid_y1 = int((l_y1 + r_y1)/2) if mid_x1 == int((l_x1 + r_x1)/2) else int((l_y1 + r_y2)/2)
+
+        mid_x2 = int((l_x2 + r_x2)/2) if mid_x1 == int((l_x1 + r_x1)/2) else int((l_x2 + r_x1)/2)
+        mid_y2 = int((l_y2 + r_y2)/2) if mid_x1 == int((l_x1 + l_y1)/2) else int((l_y2 + r_y1)/2)
+        cv2.line(final, (mid_x1, mid_y1), (mid_x2, mid_y2), (255, 0, 255), 12)
 
     return final
 
