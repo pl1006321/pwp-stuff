@@ -63,6 +63,10 @@ class guiwindows:
         self.root.geometry('320x150')
         self.database = database()
 
+        self.video_running = False
+        self.video_paused = False
+        self.cap = None
+
         self.setup_login_page()
 
     def setup_login_page(self):
@@ -153,15 +157,11 @@ class guiwindows:
         log_button = Button(log_panel, text='open log file', command=self.open_log_file, font=custom_font, padx=5, pady=7)
         log_button.grid(row=2, padx=4, pady=5, ipadx=5, ipady=5)
 
-        stream_elem = Label(vid_stream_panel, text='video stream')
-        stream_elem.grid(padx=50, pady=40)
+        self.stream_elem = Label(vid_stream_panel, text='video stream')
+        self.stream_elem.grid(padx=50, pady=40)
 
-        overlay_elem = Label(vid_overlay_panel, text='overlay stream')
-        overlay_elem.grid(padx=50, pady=10)
-
-        video_thread = Thread(target=self.update_vid_stream, args=(stream_elem, overlay_elem))
-        video_thread.daemon = True
-        video_thread.start()
+        self.overlay_elem = Label(vid_overlay_panel, text='overlay stream')
+        self.overlay_elem.grid(padx=50, pady=10)
 
         forward = Button(buttons_panel, text='move forward', font=custom_font, padx=5, pady=7,)
         forward.grid(row=1, column=2, padx=5, pady=5, ipadx=5, ipady=5, sticky='we', columnspan=2)
@@ -189,17 +189,53 @@ class guiwindows:
         # backward.bind('<ButtonPress-1>', lambda event: self.log_direction('backward', user))
         # backward.bind('<ButtonRelease-1', lambda event: self.log_direction('stop', user))
     
-    def update_vid_stream(self, element1, element2):
-        pass
+    def update_vid_stream(self):
+        while self.video_running:
+            if self.video_paused:
+                continue
+
+            if not self.cap.isOpened():
+                print('uh oh')
+                break
+
+            ret, frame = self.cap.read() 
+            if not ret:
+                break
+
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_rgb = cv2.resize(frame_rgb, (480, 270))
+            stream_img = Image.fromarray(frame_rgb)
+            stream_imgtk = ImageTk.PhotoImage(image=stream_img)
+
+            self.stream_elem.config(image=stream_imgtk)
+            self.stream_elem.image = stream_imgtk
+
+            self.overlay_elem.config(image=stream_imgtk)
+            self.overlay_elem.image = stream_imgtk
+
+            self.root.update_idletasks() 
+        
+        self.cap.release()
+        self.cap = None
+        self.video_running = False
     
     def log_direction(self, direction, user):
         pass
 
     def play_video(self):
-        pass
+        if self.cap is None:
+            self.cap = cv2.VideoCapture('video.mov')
+            self.video_running = True
+            self.video_paused = False
+
+            self.video_thread = Thread(target=self.update_vid_stream)
+            self.video_thread.daemon = True
+            self.video_thread.start() 
+        else:
+            self.video_paused = False
 
     def stop_video(self):
-        pass
+        self.video_paused = True
 
     def open_log_file(self):
         file_path = 'system_log.txt'
