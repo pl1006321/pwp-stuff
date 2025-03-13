@@ -3,14 +3,15 @@ import messages as msg
 from tkinter import *
 from tkinter.scrolledtext import *
 from tkinter.font import Font
-import requests
 from PIL import Image, ImageTk
 from threading import Thread
 import cv2
-import base64
 import numpy as np
 import os
 import subprocess
+from processing import *
+from datetime import *
+import socket
 
 class database:
     def __init__(self):
@@ -62,7 +63,7 @@ class guiwindows:
         self.root.title('user login')
         self.root.geometry('320x150')
         self.database = database()
-
+ 
         self.video_running = False
         self.video_paused = False
         self.cap = None
@@ -165,13 +166,13 @@ class guiwindows:
 
         forward = Button(buttons_panel, text='move forward', font=custom_font, padx=5, pady=7,)
         forward.grid(row=1, column=2, padx=5, pady=5, ipadx=5, ipady=5, sticky='we', columnspan=2)
-        # forward.bind('<ButtonPress-1>', lambda event: self.log_direction('forward', user))
-        # forward.bind('<ButtonRelease-1', lambda event: self.log_direction('stop', user))
+        forward.bind('<ButtonPress-1>', lambda event: self.log_direction('forward', user, text_area))
+        forward.bind('<ButtonRelease-1>', lambda event: self.log_direction('stop', user, text_area))
 
         left = Button(buttons_panel, text='move left', font=custom_font, padx=5, pady=7)
         left.grid(row=2, column=1, padx=2.5, pady=5, ipadx=5, ipady=5)
-        # left.bind('<ButtonPress-1>', lambda event: self.log_direction('left', user))
-        # left.bind('<ButtonRelease-1', lambda event: self.log_direction('stop', user))
+        left.bind('<ButtonPress-1>', lambda event: self.log_direction('left', user, text_area))
+        left.bind('<ButtonRelease-1>', lambda event: self.log_direction('stop', user, text_area))
 
         play = Button(buttons_panel, text='play', font=custom_font, padx=5, pady=7, command=self.play_video)
         play.grid(row=2, column=2, padx=2.5, pady=5, ipadx=5, ipady=5, sticky='we')
@@ -181,15 +182,25 @@ class guiwindows:
 
         right = Button(buttons_panel, text='move right', font=custom_font, padx=5, pady=7)
         right.grid(row=2, column=4, padx=2.5, pady=5, ipadx=5, ipady=5)
-        # right.bind('<ButtonPress-1>', lambda event: self.log_direction('right', user))
-        # right.bind('<ButtonRelease-1', lambda event: self.log_direction('stop', user))
+        right.bind('<ButtonPress-1>', lambda event: self.log_direction('right', user, text_area))
+        right.bind('<ButtonRelease-1>', lambda event: self.log_direction('stop', user, text_area))
 
         backward = Button(buttons_panel, text='move backward', font=custom_font, padx=5, pady=7)
         backward.grid(row=3, column=2, padx=2.5, pady=5, ipadx=5, ipady=5, sticky='we', columnspan=2)
-        # backward.bind('<ButtonPress-1>', lambda event: self.log_direction('backward', user))
-        # backward.bind('<ButtonRelease-1', lambda event: self.log_direction('stop', user))
+        backward.bind('<ButtonPress-1>', lambda event: self.log_direction('backward', user, text_area))
+        backward.bind('<ButtonRelease-1>', lambda event: self.log_direction('stop', user, text_area))
+
+        ip_addr = socket.gethostbyname(socket.gethostname())
+        time = datetime.now() 
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')        
+        msg = f'{user}@{ip_addr} has logged in at {timestamp}'
+        text_area.config(state='normal')
+        text_area.insert(END, msg)
+        text_area.see(END)
+        text_area.config(state='disabled')
     
     def update_vid_stream(self):
+        global leftline, rightline
         while self.video_running:
             if self.video_paused:
                 continue
@@ -202,16 +213,55 @@ class guiwindows:
             if not ret:
                 break
 
+            frame = cv2.resize(frame, (960, 540))
+
+            frame_count = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
+            fps = self.cap.get(cv2.CAP_PROP_FPS)
+
+            key = frame_count / fps 
+
+            only1_temp = cv2.imread('templates/only1_temp.png')
+            only2_temp = cv2.imread('templates/only2_temp.png')
+
+            left1_temp = cv2.imread('templates/left1_temp.png')
+            right1_temp = cv2.imread('templates/right1_temp.png')
+
+            arrow_temps = {'left':left1_temp, 'right':right1_temp}
+            only_temps = [only1_temp, only2_temp]
+
+            points = get_points(key)
+            warped = pers_trans(frame, points)
+            filtered = filters(warped.copy())
+
+            lines = detect_lines(filtered, warped, arrow_temps, only_temps)
+
+            unwarped = unwarp(lines, points)
+            mask = cv2.cvtColor(unwarped, cv2.COLOR_BGR2GRAY) > 0
+            final = frame.copy() 
+            final[mask] = unwarped[mask]
+
+
+            if 16.90 <= key <= 16.94 or 46 <= key <= 46.04:
+                set_current_dir('forward')
+            final = overlay_arrow(final, get_current_dir())
+
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame_rgb = cv2.resize(frame_rgb, (480, 270))
+
+            overlay_rgb = cv2.cvtColor(final, cv2.COLOR_BGR2RGB)
+            overlay_rgb = cv2.resize(overlay_rgb, (480, 270))
+
             stream_img = Image.fromarray(frame_rgb)
             stream_imgtk = ImageTk.PhotoImage(image=stream_img)
+
+            overlay_img = Image.fromarray(overlay_rgb)
+            overlay_imgtk = ImageTk.PhotoImage(image=overlay_img)
 
             self.stream_elem.config(image=stream_imgtk)
             self.stream_elem.image = stream_imgtk
 
-            self.overlay_elem.config(image=stream_imgtk)
-            self.overlay_elem.image = stream_imgtk
+            self.overlay_elem.config(image=overlay_imgtk)
+            self.overlay_elem.image = overlay_imgtk
 
             self.root.update_idletasks() 
         
@@ -219,8 +269,16 @@ class guiwindows:
         self.cap = None
         self.video_running = False
     
-    def log_direction(self, direction, user):
-        pass
+    def log_direction(self, direction, user, gui):
+        ip_addr = socket.gethostbyname(socket.gethostname())
+        time = datetime.now() 
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+        
+        msg = f'{user}@{ip_addr} has sent the command {direction} at {timestamp}\n'
+        gui.config(state='normal')
+        gui.insert(END, msg)
+        gui.see(END)
+        gui.config(state='disabled')
 
     def play_video(self):
         if self.cap is None:
