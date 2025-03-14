@@ -164,7 +164,9 @@ class guiwindows:
         msg.login(username)
         self.create_robot_gui(username)
 
-    # cretr
+    # insert the entered credentials into the 
+    # database if the username does not already 
+    # exist. 
     def create_acc(self):
         username = self.user_entry_text.get()
         password = self.pw_entry_text.get()
@@ -180,6 +182,9 @@ class guiwindows:
         self.database.insert_user(username, password)
         msg.create_acc()
 
+    # creates a new tkinter window, and sets up 
+    # the frames for video streaming and overlay, 
+    # as well as control buttons and log panel. 
     def create_robot_gui(self, user):
         robot_gui = Toplevel()
         robot_gui.title('robot gui')
@@ -246,7 +251,10 @@ class guiwindows:
         text_area.insert(END, msg)
         text_area.see(END)
         text_area.config(state='disabled')
-    
+
+    # runs in a separate thread to continuously 
+    # process video frames. applies image overlay 
+    # functions from the processing file 
     def update_vid_stream(self):
         global leftline, rightline
         while self.video_running:
@@ -316,7 +324,11 @@ class guiwindows:
         self.cap.release()
         self.cap = None
         self.video_running = False
-    
+
+    # logs movement commands issued by
+    # the user into the log panel. takes in
+    # the direction, username, and the log 
+    # panel to add text. 
     def log_direction(self, direction, user, gui):
         ip_addr = socket.gethostbyname(socket.gethostname())
         time = datetime.now() 
@@ -328,6 +340,9 @@ class guiwindows:
         gui.see(END)
         gui.config(state='disabled')
 
+    # starts playing video if the camera 
+    # connection does not alr exist. otherwise, 
+    # resume processing frames
     def play_video(self):
         if self.cap is None:
             self.cap = cv2.VideoCapture('video.mov')
@@ -340,9 +355,14 @@ class guiwindows:
         else:
             self.video_paused = False
 
+    # pauses video playback from the moment
+    # the user clicks the stop button
     def stop_video(self):
         self.video_paused = True
 
+    # linked to the open log file button. 
+    # if file does not already exist, create 
+    # the file. then, open the log file
     def open_log_file(self):
         file_path = 'system_log.txt'
         if not os.path.exists(file_path):
