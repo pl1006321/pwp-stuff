@@ -13,19 +13,37 @@ from processing import *
 from datetime import *
 import socket
 
+"""
+set up a class for initializing, accessing, and editing
+an sqlite3 database for managing the credentials of 
+the login interface of the program.
+"""
 class database:
+    # initializes the database upon creating an instance
+    # of the database class 
     def __init__(self):
         self.create_db() 
 
+    # connects to the sqlite3 database, returns the 
+    # connection object and the cursor for executing 
+    # further queries. this function must be called
+    # every time before accessing and modifying the
+    # database 
     def connect(self):
         conn = sqlite3.connect('userinfo.db')
         cursor = conn.cursor()
         return conn, cursor
-    
+
+    # commits changes to the database and closes the 
+    # connection, ensuring changes are saved and that
+    # the connection is safely closed each time 
     def commit_n_close(self, conn):
         conn.commit()
         conn.close() 
 
+    # creates the database if it does not already 
+    # exist. called when creating an instance of the 
+    # database class 
     def create_db(self):
         conn, cursor = self.connect()
         cursor.execute('''
@@ -37,18 +55,29 @@ class database:
         ''')
         self.commit_n_close(conn)
 
+    # inserts a new set of user credentials into
+    # the users table. takes in the inputs username
+    # and password to insert into the database
     def insert_user(self, username, password):
         conn, cursor = self.connect()
         cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
         self.commit_n_close(conn)
 
+    # takes in the input username, then checks if 
+    # a user in the database with the given username 
+    # already exists in the database. if the user 
+    # already exists, reutrn True. otherwise, False
     def user_exists(self, username):
         conn, cursor = self.connect()
         cursor.execute('SELECT id FROM users WHERE username = ?', (username, ))
         result = cursor.fetchone()
         self.commit_n_close(conn)
         return result is not None
-    
+
+    # takes in the input username, then returns 
+    # the password for the given username. If the 
+    # user does not exist, return None. otherwise, 
+    # return the password
     def get_password(self, username):
         conn, cursor = self.connect()
         cursor.execute('SELECT password FROM users WHERE username = ?', (username, ))
@@ -56,8 +85,17 @@ class database:
         self.commit_n_close(conn)
         return password[0] if password else None
     
-
+"""
+set up a class for initializing the graphical user 
+interface (gui) elements of the user login and control
+panel. 
+"""
 class guiwindows:
+    # upon creating an instance of the guiwindows
+    # class, initializes the main gui window, a 
+    # database object for managing and accessing
+    # credentials, and variables required for 
+    # ideo streaming, and the login page is launched. 
     def __init__(self, root):
         self.root = root
         self.root.title('user login')
@@ -70,6 +108,11 @@ class guiwindows:
 
         self.setup_login_page()
 
+    # creates the text labels and text entry 
+    # fields for username and password input, 
+    # as well as buttons for login and account 
+    # creation. uses the sqlite3 database from 
+    # the database object to manage and access creds 
     def setup_login_page(self):
         self.user_entry_text = StringVar()
         self.pw_entry_text = StringVar()
@@ -98,6 +141,10 @@ class guiwindows:
         create_acc_button = Button(buttons_panel, text='create account', command=self.create_acc) 
         create_acc_button.grid(row=1, column=2, ipadx=3, ipady=2, padx=5, pady=5)
 
+    # called upon clicking the login button 
+    # inside the gui. checks if the entered 
+    # username and password match the creds 
+    # stored in the database
     def login(self):
         username = self.user_entry_text.get()
         password = self.pw_entry_text.get()
@@ -117,6 +164,7 @@ class guiwindows:
         msg.login(username)
         self.create_robot_gui(username)
 
+    # cretr
     def create_acc(self):
         username = self.user_entry_text.get()
         password = self.pw_entry_text.get()
