@@ -4,14 +4,22 @@ import numpy as np
 leftline = rightline = None
 current_dir = 'forward'
 
+# setter function for the current_dir 
+# value, meant to be used by the gui.py file 
 def set_current_dir(value):
     global current_dir
     current_dir = value
 
+# getter function for the current_dir 
+# value, meant to be used by the gui.py file 
 def get_current_dir():
     global current_dir
     return current_dir
 
+# takes in the video frame and a set of 
+# points, then performs perspective transform
+# with the roi. returns a warped top-down view 
+# of the frame
 def pers_trans(frame, points):
     src_pts = np.float32(points)
     dst_pts = np.float32([[0, 500], [0, 0], [500, 0], [500, 500]])
@@ -24,6 +32,10 @@ def pers_trans(frame, points):
 
     return warped
 
+# takes in the warped frame and the set of 
+# coordinates used to warp it, then performs 
+# perspective transform. returns an unwarped 
+# version to the original perspective
 def unwarp(warped, points):
     src_pts = np.float32([[0, 500], [0, 0], [500, 0], [500, 500]])
     dst_pts = np.float32(points)
@@ -33,6 +45,7 @@ def unwarp(warped, points):
 
     return unwarped
 
+# 
 def filters(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (9, 9), 0)
