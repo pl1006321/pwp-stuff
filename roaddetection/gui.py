@@ -247,6 +247,9 @@ class guiwindows:
         time = datetime.now() 
         timestamp = time.strftime('%Y-%m-%d %H:%M:%S')        
         msg = f'{user}@{ip_addr} has logged in at {timestamp}'
+        with open('system_log.txt', 'a') as file:
+            file.write(msg)
+        file.close()
         text_area.config(state='normal')
         text_area.insert(END, msg)
         text_area.see(END)
