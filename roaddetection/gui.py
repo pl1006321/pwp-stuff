@@ -338,6 +338,9 @@ class guiwindows:
         timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
         
         msg = f'{user}@{ip_addr} has sent the command {direction} at {timestamp}\n'
+        with open('system_log.txt', 'a') as file:
+            file.write(msg)
+        file.close()
         gui.config(state='normal')
         gui.insert(END, msg)
         gui.see(END)
